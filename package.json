@@ -1,0 +1,21 @@
+{
+  "name": "vue-project-backend",
+  "module": "index.js",
+  "type": "module",
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "scripts": {
+    "dev": "bun --watch index.js"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^0.8.0",
+    "@elysiajs/jwt": "^0.8.0",
+    "elysia": "^0.8.14",
+    "jose": "^5.2.1",
+    "mongoose": "^8.1.1"
+  }
+}
