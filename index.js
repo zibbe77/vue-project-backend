@@ -1,8 +1,8 @@
 import { Elysia, t } from "elysia";
-import { Mongoose, Schema } from "mongoose";
-import { cors } from "@elysiajs/cors";
-import { User } from "/Users/zibell.theo/mina-projekt/Bun_Repos/vue-project-backend/schema.js";
+import { User } from "./schema.js";
 import jwt from "@elysiajs/jwt";
+import cors from "@elysiajs/cors";
+import { cookie } from "@elysiajs/cookie";
 
 const uri = "mongodb+srv://zibelltheo:vFdMNcyExxMfbOy4@cluster0.lobxbrj.mongodb.net/?retryWrites=true&w=majority";
 const allowedCharsArray = [
@@ -99,99 +99,366 @@ function FindSpecialChars(string) {
 //-------------------------------
 
 const app = new Elysia()
-    .use(cors())
     .use(
         jwt({
+            alg: "HS384",
             name: "jwt",
-            secret: "idk what this does",
+            secret: "efgfnkgfkbkfbnjgsjnbaargldsdsdsdwwwiqoqodjdncxrgklerbknsdsdsdfffgfjhojnpspqxxhhjhjhj",
         })
     )
-    .get("/signin", ({ headers }) => {
-        console.log(atob(headers.authorization.split(" ")[1]).split(":")[1]);
+    .use(cookie())
+    .onAfterHandle(({ request, set }) => {
+        // Only process CORS requests
+        if (request.method !== "OPTIONS") return;
+
+        const allowHeader = set.headers["Access-Control-Allow-Headers"];
+        if (allowHeader === "*") {
+            set.headers["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers") ?? "";
+        }
     })
-    .post(
-        "/user",
-        async ({ body, set }) => {
-            let incomingOkej = true;
-            if (body.inputpassword.length < 8) {
-                incomingOkej = false;
-            } else if (body.inputpassword.length > 64) {
-                incomingOkej = false;
-            } else if (FindSpecialChars(body.inputpassword)) {
-                incomingOkej = false;
-            } else if (body.inputusername.length < 3) {
-                incomingOkej = false;
-            } else if (body.inputusername.length > 64) {
-                incomingOkej = false;
-            } else if (FindSpecialChars(body.inputusername)) {
-                incomingOkej = false;
+    .use(cors())
+    .get(
+        "/isfavpokemon/:id",
+        async ({ params, set, jwt, cookie: { auth } }) => {
+            const profile = await jwt.verify(auth);
+
+            if (!profile) {
+                set.status = 401;
+                return "Unauthorized";
             }
 
-            if (incomingOkej === true) {
-                let currentUsers = await User.find({ username: body.inputusername });
+            let usernameInput = "";
 
-                //console.log(currentUser);
-                const isMatch = await Bun.password.verify(body.inputpassword, currentUsers[0].password);
-                if (isMatch === true) {
-                    set.status = 200;
-                    return "welcome";
-                }
-                set.status = 404;
-                return "Wrong pasword or usernamn";
+            for (const [key, value] of Object.entries(profile)) {
+                usernameInput += value;
             }
-            set.status = 400;
-            return;
+
+            let returnBool = false;
+            try {
+                let currentUser = await User.findOne({ username: usernameInput });
+
+                currentUser.favPokemonId.forEach((element) => {
+                    if (element === params.id) {
+                        returnBool = true;
+                    }
+                });
+            } catch (error) {}
+
+            set.status = 200;
+            return returnBool;
         },
         {
-            body: t.Object({
-                inputusername: t.String(),
-                inputpassword: t.String(),
+            params: t.Object({
+                id: t.Numeric(),
             }),
         }
     )
     .post(
-        "/user/creat",
-        async ({ body, set }) => {
-            //verifie
-            let incomingOkej = true;
+        "/removefavpokemon",
+        async ({ body, set, jwt, cookie: { auth } }) => {
+            const profile = await jwt.verify(auth);
 
-            if (body.inputpassword.length < 8) {
+            if (!profile) {
+                set.status = 401;
+                return "Unauthorized";
+            }
+
+            let usernameInput = "";
+
+            for (const [key, value] of Object.entries(profile)) {
+                usernameInput += value;
+            }
+
+            let currentUser = await User.findOne({ username: usernameInput });
+
+            for (let i = 0; i < currentUser.favPokemonId.length; i++) {
+                if (currentUser.favPokemonId[i] === body.pokemonId) {
+                    currentUser.favPokemonId.splice(i, 1);
+                    currentUser.favPokemon.splice(i, 1);
+                }
+            }
+            currentUser.save();
+
+            set.status = 200;
+            return;
+        },
+        {
+            body: t.Object({
+                pokemonId: t.Number(),
+            }),
+        }
+    )
+    .post(
+        "/addfavpokemon",
+        async ({ body, set, jwt, cookie: { auth } }) => {
+            const profile = await jwt.verify(auth);
+
+            if (!profile) {
+                set.status = 401;
+                return "Unauthorized";
+            }
+
+            let usernameInput = "";
+
+            for (const [key, value] of Object.entries(profile)) {
+                usernameInput += value;
+            }
+
+            let currentUser = await User.findOne({ username: usernameInput });
+            currentUser.favPokemon.push(body.pokemon);
+            currentUser.favPokemonId.push(body.pokemonId);
+            currentUser.save();
+
+            set.status = 200;
+            return;
+        },
+        {
+            body: t.Object({
+                pokemon: t.String(),
+                pokemonId: t.Number(),
+            }),
+        }
+    )
+    .get(
+        "/isfavmove/:id",
+        async ({ params, set, jwt, cookie: { auth } }) => {
+            const profile = await jwt.verify(auth);
+
+            if (!profile) {
+                set.status = 401;
+                return "Unauthorized";
+            }
+
+            let usernameInput = "";
+
+            for (const [key, value] of Object.entries(profile)) {
+                usernameInput += value;
+            }
+
+            let returnBool = false;
+
+            try {
+                let currentUser = await User.findOne({ username: usernameInput });
+                currentUser.favMoveId.forEach((element) => {
+                    if (element === params.id) {
+                        returnBool = true;
+                    }
+                });
+            } catch (error) {}
+
+            set.status = 200;
+            return returnBool;
+        },
+        {
+            params: t.Object({
+                id: t.Numeric(),
+            }),
+        }
+    )
+    .post(
+        "/removefavmove",
+        async ({ body, set, jwt, cookie: { auth } }) => {
+            const profile = await jwt.verify(auth);
+
+            if (!profile) {
+                set.status = 401;
+                return "Unauthorized";
+            }
+
+            let usernameInput = "";
+
+            for (const [key, value] of Object.entries(profile)) {
+                usernameInput += value;
+            }
+
+            let currentUser = await User.findOne({ username: usernameInput });
+
+            for (let i = 0; i < currentUser.favMoveId.length; i++) {
+                if (currentUser.favMoveId[i] === body.moveId) {
+                    currentUser.favMoveId.splice(i, 1);
+                    currentUser.favMove.splice(i, 1);
+                }
+            }
+            currentUser.save();
+
+            set.status = 200;
+            return;
+        },
+        {
+            body: t.Object({
+                moveId: t.Number(),
+            }),
+        }
+    )
+    .post(
+        "/addfavmove",
+        async ({ body, set, jwt, cookie: { auth } }) => {
+            const profile = await jwt.verify(auth);
+
+            if (!profile) {
+                set.status = 401;
+                return "Unauthorized";
+            }
+
+            let usernameInput = "";
+
+            for (const [key, value] of Object.entries(profile)) {
+                usernameInput += value;
+            }
+
+            let currentUser = await User.findOne({ username: usernameInput });
+            currentUser.favMove.push(body.move);
+            currentUser.favMoveId.push(body.moveId);
+            currentUser.save();
+
+            set.status = 200;
+            return;
+        },
+        {
+            body: t.Object({
+                move: t.String(),
+                moveId: t.Number(),
+            }),
+        }
+    )
+    .get("/mypage", async ({ set, jwt, cookie: { auth } }) => {
+        const profile = await jwt.verify(auth);
+
+        if (!profile) {
+            set.status = 401;
+            return "Unauthorized";
+        }
+
+        let usernameInput = "";
+
+        for (const [key, value] of Object.entries(profile)) {
+            usernameInput += value;
+        }
+
+        let currentUser = await User.findOne({ username: usernameInput });
+        let returnObj = {
+            favPokemon: currentUser.favPokemon,
+            favPokemonId: currentUser.favPokemonId,
+            favMove: currentUser.favMove,
+            favMoveId: currentUser.favMoveId,
+        };
+
+        set.status = 200;
+        return returnObj;
+    })
+    .get(
+        "/signin",
+        async ({ headers, set, jwt, cookie, setCookie }) => {
+            // gets the pasword and username
+            let inputValueA = atob(headers.authorization.split(" ")[1]).split(":");
+
+            //checks input for chars
+            let incomingOkej = true;
+            if (inputValueA[1].length < 8) {
                 incomingOkej = false;
-            } else if (body.inputpassword.length > 64) {
+            } else if (inputValueA[1].length > 64) {
                 incomingOkej = false;
-            } else if (FindSpecialChars(body.inputpassword)) {
+            } else if (FindSpecialChars(inputValueA[1])) {
                 incomingOkej = false;
-            } else if (body.inputusername.length < 3) {
+            } else if (inputValueA[0].length < 3) {
                 incomingOkej = false;
-            } else if (body.inputusername.length > 64) {
+            } else if (inputValueA[0].length > 64) {
                 incomingOkej = false;
-            } else if (FindSpecialChars(body.inputusername)) {
+            } else if (FindSpecialChars(inputValueA[0])) {
                 incomingOkej = false;
             }
 
-            if (incomingOkej === true) {
-                const argonHash = await Bun.password.hash(body.inputpassword, {
-                    algorithm: "argon2id",
-                    memoryCost: 4, // memory usage in kibibytes
-                    timeCost: 3, // the number of iterations
-                });
+            if (incomingOkej) {
+                let isMatch = false;
+                try {
+                    let currentUsers = await User.find({ username: inputValueA[0] }).orFail();
+                    isMatch = await Bun.password.verify(inputValueA[1], currentUsers[0].password);
+                } catch (error) {}
 
-                const newUser = new User({
-                    username: body.inputusername,
-                    password: argonHash,
-                    id: Math.floor(Math.random() * Number.MAX_VALUE),
-                });
-                newUser.save();
-                set.status = 201;
-                return "user! :D";
+                if (isMatch === true) {
+                    //JSW token
+                    setCookie("auth", await jwt.sign(inputValueA[0]), {
+                        maxAge: 7 * 864,
+                    });
+                    //user name
+                    setCookie("username", inputValueA[0], {
+                        maxAge: 7 * 864,
+                    });
+
+                    set.status = 200;
+                    return "welcome";
+                }
+                set.status = 404;
+                return "Wrong password or username";
+            }
+
+            set.status = 404;
+            return "Wrong password or username";
+        },
+        {
+            headers: t.Object({
+                authorization: t.String(),
+            }),
+        }
+    )
+    .get(
+        "/user/create",
+        async ({ headers, set, jwt, cookie, setCookie }) => {
+            // gets the pasword and username
+            let inputValueA = atob(headers.authorization.split(" ")[1]).split(":");
+            //checks input for chars
+            let incomingOkej = true;
+            if (inputValueA[1].length < 8) {
+                incomingOkej = false;
+            } else if (inputValueA[1].length > 64) {
+                incomingOkej = false;
+            } else if (FindSpecialChars(inputValueA[1])) {
+                incomingOkej = false;
+            } else if (inputValueA[0].length < 3) {
+                incomingOkej = false;
+            } else if (inputValueA[0].length > 64) {
+                incomingOkej = false;
+            } else if (FindSpecialChars(inputValueA[0])) {
+                incomingOkej = false;
+            }
+
+            if (incomingOkej) {
+                let usernameExist = await User.find({ username: inputValueA[0] });
+                if (usernameExist.length == 0) {
+                    const argonHash = await Bun.password.hash(inputValueA[1], {
+                        algorithm: "argon2id",
+                        memoryCost: 4, // memory usage in kibibytes
+                        timeCost: 3, // the number of iterations
+                    });
+
+                    const newUser = new User({
+                        username: inputValueA[0],
+                        password: argonHash,
+                    });
+                    newUser.save();
+
+                    //JSW token
+                    setCookie("auth", await jwt.sign(inputValueA[0]), {
+                        maxAge: 7 * 864,
+                    });
+
+                    //user name
+                    setCookie("username", inputValueA[0], {
+                        maxAge: 7 * 864,
+                    });
+
+                    set.status = 201;
+                    return "user";
+                }
+                set.status = 400;
+                return "username is used";
             }
             set.status = 400;
             return "Somting went wrong";
         },
         {
-            body: t.Object({
-                inputusername: t.String(),
-                inputpassword: t.String(),
+            headers: t.Object({
+                authorization: t.String(),
             }),
         }
     )
