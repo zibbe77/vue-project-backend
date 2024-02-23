@@ -1,15 +1,14 @@
 # vue-project-backend
+This is the backend for my project <https://github.com/zibbe77/vue-project.git> 
 
-To install dependencies:
+# What do it do 
+The backend is used as a api to access the database on mongodb atlas and to handle authorization of accounts through JWT tokens. 
 
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.js
-```
-
-This project was created using `bun init` in bun v1.0.14. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+# dependencies
+├── @elysiajs/cookie@0.8.0
+├── @elysiajs/cors@0.8.0
+├── @elysiajs/jwt@0.8.0
+├── bun-types@1.0.25
+├── elysia@0.8.15
+├── jose@5.2.1
+└── mongoose@8.1.1
