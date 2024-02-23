@@ -1,7 +1,7 @@
 # vue-project-backend
 This is the backend for my project <https://github.com/zibbe77/vue-project.git> 
 
-# What do it do 
+# purpose
 The backend is used as a api to access the database on mongodb atlas and to handle authorization of accounts through JWT tokens. 
 
 # dependencies
