@@ -1,10 +1,10 @@
 # Vue-project-backend
 This is the backend for my project <https://github.com/zibbe77/vue-project.git> 
 
-# Purpose
+## Purpose
 The backend is used as a api to access the database on mongodb atlas and to handle authorization of accounts through JWT tokens. 
 
-# Dependencies
+## Dependencies
 > Using Bun\
 > ├── @elysiajs/cookie@0.8.0\
 > ├── @elysiajs/cors@0.8.0\
